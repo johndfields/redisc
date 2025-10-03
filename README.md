@@ -1,6 +1,7 @@
-# Redis Browser - Quick Start Guide
+# Redisc Browser - Quick Start Guide
 
 ## Overview
+Redisc - a tool for Redis discovery
 A terminal-based Redis key browser with support for SSH tunneling, pattern matching, and full CRUD operations.
 
 ## Installation
