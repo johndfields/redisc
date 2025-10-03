@@ -123,4 +123,15 @@ export class KeyManager {
       isFiltered: this.filteredKeys.length !== this.allKeys.length
     };
   }
+
+  /**
+   * Remove a key from local cache (after deletion)
+   * This provides instant UI feedback without reloading from Redis
+   * 
+   * @param key - Key to remove from local cache
+   */
+  removeKey(key: string): void {
+    this.allKeys = this.allKeys.filter(k => k !== key);
+    this.filteredKeys = this.filteredKeys.filter(k => k !== key);
+  }
 }

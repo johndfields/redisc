@@ -167,14 +167,22 @@ async function main() {
         async () => {
           try {
             await deleteKey(client as any, key);
-            await loadKeys(currentPattern);
+            
+            // Remove key from local cache for instant UI update
+            keyManager.removeKey(key);
+            updateKeyList();
+            updateStatusBar();
+            
+            // Show success message
             valueDisplay.widget.setContent(`{green-fg}✓ Key deleted successfully:{/green-fg} ${key}`);
             statusBar.widget.setContent(` Key deleted: ${key}`);
+            
             keyListWidget.widget.focus();
+            screen.render();
           } catch (err: any) {
             valueDisplay.widget.setContent(`{red-fg}✗ Error deleting key:{/red-fg} ${err.message}`);
+            screen.render();
           }
-          screen.render();
         },
         () => {
           valueDisplay.widget.setContent('Delete cancelled');
