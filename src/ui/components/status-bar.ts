@@ -30,7 +30,7 @@ export function createStatusBar(screen: blessed.Widgets.Screen): StatusBarWidget
       : `Keys: ${allCount}`;
     
     widget.setContent(
-      ` [${envName.toUpperCase()}] | ${showing} | /: Search | p: Pattern | d: Delete | t: TTL | r: Refresh | ?: Help | q: Quit`
+      ` [${envName.toUpperCase()}] | ${showing} | /: Search | p: Pattern | d: Delete | t: TTL | ^T: Tree | r: Refresh | ?: Help | q: Quit`
     );
   };
 

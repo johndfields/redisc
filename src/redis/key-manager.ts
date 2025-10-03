@@ -8,6 +8,7 @@ export class KeyManager {
   private filteredKeys: string[] = [];
   private currentPattern: string = '*';
   private currentSearchTerm: string = '';
+  private treeMode: boolean = false;
 
   constructor(private client: RedisClientType<any, any, any>) {}
 
@@ -133,5 +134,38 @@ export class KeyManager {
   removeKey(key: string): void {
     this.allKeys = this.allKeys.filter(k => k !== key);
     this.filteredKeys = this.filteredKeys.filter(k => k !== key);
+  }
+
+  /**
+   * Enable tree view mode
+   */
+  enableTreeMode(): void {
+    this.treeMode = true;
+  }
+
+  /**
+   * Disable tree view mode
+   */
+  disableTreeMode(): void {
+    this.treeMode = false;
+  }
+
+  /**
+   * Toggle tree view mode
+   * 
+   * @returns New state of tree mode
+   */
+  toggleTreeMode(): boolean {
+    this.treeMode = !this.treeMode;
+    return this.treeMode;
+  }
+
+  /**
+   * Check if tree mode is enabled
+   * 
+   * @returns True if tree mode is enabled
+   */
+  isTreeMode(): boolean {
+    return this.treeMode;
   }
 }

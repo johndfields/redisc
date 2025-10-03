@@ -27,6 +27,13 @@ function getHelpText(): string {
     d               Delete selected key (with confirmation)
     t               Show TTL for selected key
     r               Refresh key list
+    (^t)            Toggle tree view mode
+  
+  Tree View (^t):
+    Enter/Space     Toggle expand/collapse folder
+    →               Expand selected folder
+    ←               Collapse selected folder
+    d/t             Delete/TTL on selected key (not folders)
   
   Redis Patterns (for 'p' command):
     *               Match any characters
