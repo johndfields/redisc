@@ -48,3 +48,15 @@ export async function getTTLMessage(client: FlexibleRedisClient, key: string): P
 export async function deleteKey(client: FlexibleRedisClient, key: string): Promise<number> {
   return await client.del(key);
 }
+
+/**
+ * Delete multiple Redis keys
+ * 
+ * @param client - Connected Redis client
+ * @param keys - Array of Redis keys to delete
+ * @returns Number of keys deleted
+ */
+export async function deleteKeys(client: FlexibleRedisClient, keys: string[]): Promise<number> {
+  if (keys.length === 0) return 0;
+  return await client.del(keys);
+}

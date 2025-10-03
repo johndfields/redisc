@@ -1,10 +1,13 @@
 import blessed from 'blessed';
-import { buildTree, flattenTree, toggleNode, type TreeNode, type FlatTreeItem } from '../../utils/tree-builder.js';
+import { buildTree, flattenTree, toggleNode, getAllKeysUnderNode, type TreeNode, type FlatTreeItem } from '../../utils/tree-builder.js';
 
 export interface TreeKeyListWidget {
   widget: blessed.Widgets.ListElement;
   updateItems(keys: string[]): void;
   getSelectedKey(): string | undefined;
+  getSelectedFolderPath(): string | undefined;
+  getSelectedFolderKeyCount(): number;
+  isSelectedItemFolder(): boolean;
   toggleCurrentNode(): void;
 }
 
@@ -66,6 +69,37 @@ export function createTreeKeyList(screen: blessed.Widgets.Screen): TreeKeyListWi
     return undefined;
   };
 
+  const getSelectedFolderPath = (): string | undefined => {
+    const selected = (widget as any).selected;
+    if (selected >= 0 && selected < flatItems.length) {
+      const item = flatItems[selected];
+      if (item.isParent) {
+        return item.fullPath;
+      }
+    }
+    return undefined;
+  };
+
+  const getSelectedFolderKeyCount = (): number => {
+    const selected = (widget as any).selected;
+    if (selected >= 0 && selected < flatItems.length) {
+      const item = flatItems[selected];
+      if (item.isParent) {
+        const keys = getAllKeysUnderNode(item.nodeRef);
+        return keys.length;
+      }
+    }
+    return 0;
+  };
+
+  const isSelectedItemFolder = (): boolean => {
+    const selected = (widget as any).selected;
+    if (selected >= 0 && selected < flatItems.length) {
+      return flatItems[selected].isParent;
+    }
+    return false;
+  };
+
   const toggleCurrentNode = (): void => {
     const selected = (widget as any).selected;
     if (selected >= 0 && selected < flatItems.length) {
@@ -125,6 +159,9 @@ export function createTreeKeyList(screen: blessed.Widgets.Screen): TreeKeyListWi
     widget, 
     updateItems,
     getSelectedKey,
+    getSelectedFolderPath,
+    getSelectedFolderKeyCount,
+    isSelectedItemFolder,
     toggleCurrentNode
   };
 }

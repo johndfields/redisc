@@ -35,20 +35,23 @@ export function createSearchBox(
 
   // Handle submit event
   widget.on('submit', (value) => {
-    onSearch(value || '');
     widget.hide();
+    onSearch(value || '');
+    screen.render();
   });
 
   // Handle cancel event
   widget.on('cancel', () => {
-    onCancel();
     widget.hide();
+    onCancel();
+    screen.render();
   });
 
   // Handle escape key
   widget.key('escape', () => {
-    onCancel();
     widget.hide();
+    onCancel();
+    screen.render();
   });
 
   const show = (): void => {

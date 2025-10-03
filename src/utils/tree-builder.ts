@@ -5,6 +5,7 @@
 export interface TreeNode {
   name: string;
   fullKey?: string; // Only exists for leaf nodes (actual keys)
+  fullPath?: string; // Full path prefix for folder nodes
   children: Map<string, TreeNode>;
   isExpanded: boolean;
   level: number;
@@ -13,6 +14,7 @@ export interface TreeNode {
 export interface FlatTreeItem {
   display: string;
   fullKey?: string; // undefined for parent nodes, defined for leaf keys
+  fullPath?: string; // Full path prefix for folder nodes
   isParent: boolean;
   isExpanded: boolean;
   level: number;
@@ -53,15 +55,18 @@ export function buildTree(keys: string[], delimiter?: string): TreeNode {
   for (const key of keys) {
     const parts = key.split(delimiter);
     let currentNode = root;
+    let pathParts: string[] = [];
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const isLeaf = i === parts.length - 1;
+      pathParts.push(part);
 
       if (!currentNode.children.has(part)) {
         const newNode: TreeNode = {
           name: part,
           fullKey: isLeaf ? key : undefined,
+          fullPath: !isLeaf ? pathParts.join(delimiter) : undefined,
           children: new Map(),
           isExpanded: false,
           level: i
@@ -70,6 +75,11 @@ export function buildTree(keys: string[], delimiter?: string): TreeNode {
       }
 
       currentNode = currentNode.children.get(part)!;
+      
+      // Update fullPath for folders as we discover they have children
+      if (!isLeaf && !currentNode.fullPath) {
+        currentNode.fullPath = pathParts.join(delimiter);
+      }
       
       // If this is a leaf node, store the full key
       if (isLeaf) {
@@ -97,6 +107,7 @@ export function flattenTree(root: TreeNode): FlatTreeItem[] {
       result.push({
         display: `${indent}${expandIcon}${node.name}`,
         fullKey: node.fullKey,
+        fullPath: node.fullPath,
         isParent: hasChildren,
         isExpanded: node.isExpanded,
         level: node.level,
@@ -177,4 +188,23 @@ export function countLeafNodes(node: TreeNode): number {
     count += countLeafNodes(child);
   }
   return count;
+}
+
+/**
+ * Get all leaf keys (actual Redis keys) under a node
+ */
+export function getAllKeysUnderNode(node: TreeNode): string[] {
+  const keys: string[] = [];
+  
+  function traverse(n: TreeNode) {
+    if (n.fullKey) {
+      keys.push(n.fullKey);
+    }
+    for (const child of n.children.values()) {
+      traverse(child);
+    }
+  }
+  
+  traverse(node);
+  return keys;
 }

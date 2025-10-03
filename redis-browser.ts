@@ -12,7 +12,7 @@ import { connectRedis } from './src/connection/redis-client.js';
 import { testConnection } from './src/connection/connection-tester.js';
 import { KeyManager } from './src/redis/key-manager.js';
 import { getKeyInfo } from './src/redis/value-fetcher.js';
-import { deleteKey } from './src/redis/key-operations.js';
+import { deleteKey, deleteKeys } from './src/redis/key-operations.js';
 import { createScreen } from './src/ui/screen-manager.js';
 import { createStatusBar } from './src/ui/components/status-bar.js';
 import { createKeyList } from './src/ui/components/key-list.js';
@@ -22,10 +22,12 @@ import { createSearchBox } from './src/ui/components/search-box.js';
 import { createHelpBox } from './src/ui/components/help-box.js';
 import { showTTLDialog } from './src/ui/dialogs/ttl-dialog.js';
 import { showDeleteDialog } from './src/ui/dialogs/delete-dialog.js';
+import { showBulkDeleteDialog } from './src/ui/dialogs/bulk-delete-dialog.js';
 import { showPatternDialog } from './src/ui/dialogs/pattern-dialog.js';
 import { setupKeyboardHandlers } from './src/ui/keyboard-handler.js';
 import { setupCleanup } from './src/utils/lifecycle.js';
 import { displayBanner } from './src/utils/banner.js';
+import { getAllKeysUnderNode } from './src/utils/tree-builder.js';
 
 async function main() {
   // Load configuration
@@ -238,38 +240,91 @@ async function main() {
 
   // Key-specific handlers (delete, TTL) for tree view
   treeKeyListWidget.widget.key('d', async () => {
-    const key = treeKeyListWidget.getSelectedKey();
-    if (!key) return;
-    
-    showDeleteDialog(
-      screen,
-      key,
-      async () => {
-        try {
-          await deleteKey(client as any, key);
-          
-          // Remove key from local cache for instant UI update
-          keyManager.removeKey(key);
-          updateKeyList();
-          updateStatusBar();
-          
-          // Show success message
-          valueDisplay.widget.setContent(`{green-fg}✓ Key deleted successfully:{/green-fg} ${key}`);
-          statusBar.widget.setContent(` Key deleted: ${key}`);
-          
+    // Check if selected item is a folder or a key
+    if (treeKeyListWidget.isSelectedItemFolder()) {
+      // Folder deletion - bulk delete all keys under this path
+      const folderPath = treeKeyListWidget.getSelectedFolderPath();
+      const keyCount = treeKeyListWidget.getSelectedFolderKeyCount();
+      
+      if (!folderPath || keyCount === 0) return;
+      
+      showBulkDeleteDialog(
+        screen,
+        folderPath,
+        keyCount,
+        async () => {
+          try {
+            // Get all keys under this folder from the current filtered set
+            const allFilteredKeys = keyManager.getFilteredKeys();
+            const keysToDelete = allFilteredKeys.filter(k => k.startsWith(folderPath + ':'));
+            
+            if (keysToDelete.length === 0) {
+              valueDisplay.widget.setContent(`{yellow-fg}No keys found to delete under: ${folderPath}{/yellow-fg}`);
+              treeKeyListWidget.widget.focus();
+              screen.render();
+              return;
+            }
+            
+            // Delete all keys
+            await deleteKeys(client as any, keysToDelete);
+            
+            // Remove keys from local cache
+            keysToDelete.forEach(key => keyManager.removeKey(key));
+            updateKeyList();
+            updateStatusBar();
+            
+            // Show success message
+            valueDisplay.widget.setContent(`{green-fg}✓ Bulk delete successful:{/green-fg} ${keysToDelete.length} keys deleted from ${folderPath}`);
+            statusBar.widget.setContent(` Bulk deleted: ${keysToDelete.length} keys from ${folderPath}`);
+            
+            treeKeyListWidget.widget.focus();
+            screen.render();
+          } catch (err: any) {
+            valueDisplay.widget.setContent(`{red-fg}✗ Error during bulk delete:{/red-fg} ${err.message}`);
+            screen.render();
+          }
+        },
+        () => {
+          valueDisplay.widget.setContent('Bulk delete cancelled');
           treeKeyListWidget.widget.focus();
           screen.render();
-        } catch (err: any) {
-          valueDisplay.widget.setContent(`{red-fg}✗ Error deleting key:{/red-fg} ${err.message}`);
+        }
+      );
+    } else {
+      // Single key deletion
+      const key = treeKeyListWidget.getSelectedKey();
+      if (!key) return;
+      
+      showDeleteDialog(
+        screen,
+        key,
+        async () => {
+          try {
+            await deleteKey(client as any, key);
+            
+            // Remove key from local cache for instant UI update
+            keyManager.removeKey(key);
+            updateKeyList();
+            updateStatusBar();
+            
+            // Show success message
+            valueDisplay.widget.setContent(`{green-fg}✓ Key deleted successfully:{/green-fg} ${key}`);
+            statusBar.widget.setContent(` Key deleted: ${key}`);
+            
+            treeKeyListWidget.widget.focus();
+            screen.render();
+          } catch (err: any) {
+            valueDisplay.widget.setContent(`{red-fg}✗ Error deleting key:{/red-fg} ${err.message}`);
+            screen.render();
+          }
+        },
+        () => {
+          valueDisplay.widget.setContent('Delete cancelled');
+          treeKeyListWidget.widget.focus();
           screen.render();
         }
-      },
-      () => {
-        valueDisplay.widget.setContent('Delete cancelled');
-        treeKeyListWidget.widget.focus();
-        screen.render();
-      }
-    );
+      );
+    }
   });
 
   keyListWidget.widget.key('t', async () => {
