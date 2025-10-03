@@ -6,6 +6,7 @@ export interface TreeNode {
   name: string;
   fullKey?: string; // Only exists for leaf nodes (actual keys)
   fullPath?: string; // Full path prefix for folder nodes
+  delimiter?: string; // Delimiter used to build this tree (stored at root)
   children: Map<string, TreeNode>;
   isExpanded: boolean;
   level: number;
@@ -47,6 +48,7 @@ export function buildTree(keys: string[], delimiter?: string): TreeNode {
 
   const root: TreeNode = {
     name: 'root',
+    delimiter: delimiter, // Store delimiter at root for later use
     children: new Map(),
     isExpanded: true,
     level: -1
@@ -207,4 +209,12 @@ export function getAllKeysUnderNode(node: TreeNode): string[] {
   
   traverse(node);
   return keys;
+}
+
+/**
+ * Get the delimiter used in the tree
+ * Walks up to root to find the stored delimiter
+ */
+export function getTreeDelimiter(root: TreeNode): string {
+  return root.delimiter || ':';
 }

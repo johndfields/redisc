@@ -1,5 +1,5 @@
 import blessed from 'blessed';
-import { buildTree, flattenTree, toggleNode, getAllKeysUnderNode, type TreeNode, type FlatTreeItem } from '../../utils/tree-builder.js';
+import { buildTree, flattenTree, toggleNode, getAllKeysUnderNode, getTreeDelimiter, type TreeNode, type FlatTreeItem } from '../../utils/tree-builder.js';
 
 export interface TreeKeyListWidget {
   widget: blessed.Widgets.ListElement;
@@ -8,6 +8,7 @@ export interface TreeKeyListWidget {
   getSelectedFolderPath(): string | undefined;
   getSelectedFolderKeyCount(): number;
   isSelectedItemFolder(): boolean;
+  getDelimiter(): string;
   toggleCurrentNode(): void;
 }
 
@@ -100,6 +101,13 @@ export function createTreeKeyList(screen: blessed.Widgets.Screen): TreeKeyListWi
     return false;
   };
 
+  const getDelimiter = (): string => {
+    if (treeRoot) {
+      return getTreeDelimiter(treeRoot);
+    }
+    return ':'; // Default fallback
+  };
+
   const toggleCurrentNode = (): void => {
     const selected = (widget as any).selected;
     if (selected >= 0 && selected < flatItems.length) {
@@ -162,6 +170,7 @@ export function createTreeKeyList(screen: blessed.Widgets.Screen): TreeKeyListWi
     getSelectedFolderPath,
     getSelectedFolderKeyCount,
     isSelectedItemFolder,
+    getDelimiter,
     toggleCurrentNode
   };
 }

@@ -12,7 +12,7 @@ import { connectRedis } from './src/connection/redis-client.js';
 import { testConnection } from './src/connection/connection-tester.js';
 import { KeyManager } from './src/redis/key-manager.js';
 import { getKeyInfo } from './src/redis/value-fetcher.js';
-import { deleteKey, deleteKeys } from './src/redis/key-operations.js';
+import { deleteKey, deleteKeysInBatches } from './src/redis/key-operations.js';
 import { createScreen } from './src/ui/screen-manager.js';
 import { createStatusBar } from './src/ui/components/status-bar.js';
 import { createKeyList } from './src/ui/components/key-list.js';
@@ -245,6 +245,7 @@ async function main() {
       // Folder deletion - bulk delete all keys under this path
       const folderPath = treeKeyListWidget.getSelectedFolderPath();
       const keyCount = treeKeyListWidget.getSelectedFolderKeyCount();
+      const delimiter = treeKeyListWidget.getDelimiter();
       
       if (!folderPath || keyCount === 0) return;
       
@@ -252,11 +253,15 @@ async function main() {
         screen,
         folderPath,
         keyCount,
+        delimiter,
         async () => {
           try {
             // Get all keys under this folder from the current filtered set
             const allFilteredKeys = keyManager.getFilteredKeys();
-            const keysToDelete = allFilteredKeys.filter(k => k.startsWith(folderPath + ':'));
+            const delimiter = treeKeyListWidget.getDelimiter();
+            const prefix = folderPath + delimiter;
+            // Use proper boundary check: key must start with exact prefix
+            const keysToDelete = allFilteredKeys.filter(k => k.startsWith(prefix));
             
             if (keysToDelete.length === 0) {
               valueDisplay.widget.setContent(`{yellow-fg}No keys found to delete under: ${folderPath}{/yellow-fg}`);
@@ -265,8 +270,20 @@ async function main() {
               return;
             }
             
-            // Delete all keys
-            await deleteKeys(client as any, keysToDelete);
+            // Show progress for deletions
+            valueDisplay.widget.setContent(`{cyan-fg}Deleting ${keysToDelete.length} keys...{/cyan-fg}`);
+            screen.render();
+            
+            // Delete all keys in batches with progress updates
+            const deletedCount = await deleteKeysInBatches(
+              client as any, 
+              keysToDelete,
+              500, // batch size
+              (deleted, total) => {
+                valueDisplay.widget.setContent(`{cyan-fg}Deleting keys: ${deleted}/${total}...{/cyan-fg}`);
+                screen.render();
+              }
+            );
             
             // Remove keys from local cache
             keysToDelete.forEach(key => keyManager.removeKey(key));
@@ -274,8 +291,8 @@ async function main() {
             updateStatusBar();
             
             // Show success message
-            valueDisplay.widget.setContent(`{green-fg}✓ Bulk delete successful:{/green-fg} ${keysToDelete.length} keys deleted from ${folderPath}`);
-            statusBar.widget.setContent(` Bulk deleted: ${keysToDelete.length} keys from ${folderPath}`);
+            valueDisplay.widget.setContent(`{green-fg}✓ Bulk delete successful:{/green-fg} ${deletedCount} keys deleted from ${folderPath}`);
+            statusBar.widget.setContent(` Bulk deleted: ${deletedCount} keys from ${folderPath}`);
             
             treeKeyListWidget.widget.focus();
             screen.render();

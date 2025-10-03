@@ -1,12 +1,24 @@
 import blessed from 'blessed';
 
 /**
+ * Generate content for bulk delete dialog with safety warnings
+ */
+function getBulkDeleteContent(folderPath: string, delimiter: string, keyCount: number): string {
+  const warning = keyCount > 1000 
+    ? `\n  {red-fg}⚠ WARNING: This will delete ${keyCount} keys!{/red-fg}`
+    : '';
+  
+  return `\n  Delete ALL keys under this folder?${warning}\n\n  Folder: ${folderPath}\n  Pattern: ${folderPath}${delimiter}*\n  Keys to delete: ${keyCount}\n\n  Press 'y' to confirm, 'n' or ESC to cancel`;
+}
+
+/**
  * Shows a confirmation dialog for bulk deleting keys under a folder
  */
 export function showBulkDeleteDialog(
   screen: blessed.Widgets.Screen,
   folderPath: string,
   keyCount: number,
+  delimiter: string,
   onConfirm: () => Promise<void>,
   onCancel: () => void
 ): void {
@@ -25,7 +37,7 @@ export function showBulkDeleteDialog(
         fg: 'red'
       }
     },
-    content: `\n  Delete ALL keys under this folder?\n\n  Folder: ${folderPath}\n  Pattern: ${folderPath}:*\n  Keys to delete: ${keyCount}\n\n  Press 'y' to confirm, 'n' or ESC to cancel`,
+    content: getBulkDeleteContent(folderPath, delimiter, keyCount),
     tags: true
   });
 
