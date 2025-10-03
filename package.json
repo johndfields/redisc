@@ -1,4 +1,11 @@
 {
+  "type": "module",
+  "scripts": {
+    "start": "tsx redis-browser.ts",
+    "start:old": "node redis-browser.js",
+    "test-conn": "tsx redis-browser.ts --test-conn",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "blessed": "^0.1.81",
     "dotenv": "^17.2.3",

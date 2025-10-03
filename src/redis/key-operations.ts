@@ -1,4 +1,7 @@
 import type { RedisClientType } from 'redis';
+
+// Use a flexible type for Redis client to avoid version conflicts
+type FlexibleRedisClient = RedisClientType<any, any, any>;
 import { formatTTL, formatTTLDetails, type TTLInfo } from '../utils/formatters.js';
 
 /**
@@ -8,7 +11,7 @@ import { formatTTL, formatTTLDetails, type TTLInfo } from '../utils/formatters.j
  * @param key - Redis key
  * @returns TTL information
  */
-export async function getTTL(client: RedisClientType<any, any, any>, key: string): Promise<TTLInfo> {
+export async function getTTL(client: FlexibleRedisClient, key: string): Promise<TTLInfo> {
   const ttl = await client.ttl(key);
   return formatTTL(ttl);
 }
@@ -20,7 +23,7 @@ export async function getTTL(client: RedisClientType<any, any, any>, key: string
  * @param key - Redis key
  * @returns Formatted TTL message
  */
-export async function getTTLMessage(client: RedisClientType<any, any, any>, key: string): Promise<string> {
+export async function getTTLMessage(client: FlexibleRedisClient, key: string): Promise<string> {
   const ttl = await client.ttl(key);
   const ttlInfo = formatTTL(ttl);
   
@@ -42,6 +45,6 @@ export async function getTTLMessage(client: RedisClientType<any, any, any>, key:
  * @param key - Redis key to delete
  * @returns Number of keys deleted (0 or 1)
  */
-export async function deleteKey(client: RedisClientType<any, any, any>, key: string): Promise<number> {
+export async function deleteKey(client: FlexibleRedisClient, key: string): Promise<number> {
   return await client.del(key);
 }

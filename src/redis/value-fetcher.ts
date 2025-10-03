@@ -1,4 +1,7 @@
 import type { RedisClientType } from 'redis';
+
+// Use a flexible type for Redis client to avoid version conflicts
+type FlexibleRedisClient = RedisClientType<any, any, any>;
 import { formatTTL } from '../utils/formatters.js';
 
 /**
@@ -8,7 +11,7 @@ import { formatTTL } from '../utils/formatters.js';
  * @param key - Redis key to fetch
  * @returns Formatted string with key information
  */
-export async function getKeyInfo(client: RedisClientType<any, any, any>, key: string): Promise<string> {
+export async function getKeyInfo(client: FlexibleRedisClient, key: string): Promise<string> {
   try {
     const type = await client.type(key);
     const ttl = await client.ttl(key);
