@@ -45,13 +45,20 @@ export function showBulkDeleteDialog(
     if (ch === 'y' || ch === 'Y') {
       dialog.destroy();
       await onConfirm();
-    } else if (ch === 'n' || ch === 'N' || ch === 'escape') {
+    } else if (ch === 'n' || ch === 'N') {
       dialog.destroy();
       onCancel();
     }
   };
 
-  dialog.key(['y', 'Y', 'n', 'N', 'escape'], handleKey);
+  // Handle escape key separately to ensure it works
+  dialog.key('escape', () => {
+    dialog.destroy();
+    onCancel();
+    screen.render();
+  });
+
+  dialog.key(['y', 'Y', 'n', 'N'], handleKey);
   dialog.focus();
   screen.render();
 }
