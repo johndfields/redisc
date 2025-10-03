@@ -16,6 +16,7 @@ import { deleteKey } from './src/redis/key-operations.js';
 import { createScreen } from './src/ui/screen-manager.js';
 import { createStatusBar } from './src/ui/components/status-bar.js';
 import { createKeyList } from './src/ui/components/key-list.js';
+import { createTreeKeyList } from './src/ui/components/tree-key-list.js';
 import { createValueDisplay } from './src/ui/components/value-display.js';
 import { createSearchBox } from './src/ui/components/search-box.js';
 import { createHelpBox } from './src/ui/components/help-box.js';
@@ -45,7 +46,11 @@ async function main() {
   const screen = createScreen(envConfig.envFile);
   const statusBar = createStatusBar(screen);
   const keyListWidget = createKeyList(screen);
+  const treeKeyListWidget = createTreeKeyList(screen);
   const valueDisplay = createValueDisplay(screen);
+
+  // Initially hide tree view
+  treeKeyListWidget.widget.hide();
 
   // Connect to Redis
   statusBar.widget.setContent(' Connecting to Redis...');
@@ -72,7 +77,11 @@ async function main() {
 
   const updateKeyList = () => {
     const filteredKeys = keyManager.getFilteredKeys();
-    keyListWidget.updateItems(filteredKeys);
+    if (keyManager.isTreeMode()) {
+      treeKeyListWidget.updateItems(filteredKeys);
+    } else {
+      keyListWidget.updateItems(filteredKeys);
+    }
     screen.render();
   };
 
@@ -95,9 +104,22 @@ async function main() {
   // Load initial keys
   await loadKeys();
 
-  // Key selection handler
+  // Key selection handler for list view
   keyListWidget.widget.on('select', async (item) => {
     const key = item.getText();
+    if (!key) return;
+
+    valueDisplay.setLoading();
+    screen.render();
+
+    const value = await getKeyInfo(client as any, key);
+    valueDisplay.setValue(key, value);
+    screen.render();
+  });
+
+  // Key selection handler for tree view
+  treeKeyListWidget.widget.on('select', async () => {
+    const key = treeKeyListWidget.getSelectedKey();
     if (!key) return;
 
     valueDisplay.setLoading();
@@ -140,10 +162,12 @@ async function main() {
         currentPattern,
         async (pattern: string) => {
           await loadKeys(pattern);
-          keyListWidget.widget.focus();
+          const activeWidget = keyManager.isTreeMode() ? treeKeyListWidget.widget : keyListWidget.widget;
+          activeWidget.focus();
         },
         () => {
-          keyListWidget.widget.focus();
+          const activeWidget = keyManager.isTreeMode() ? treeKeyListWidget.widget : keyListWidget.widget;
+          activeWidget.focus();
         }
       );
     },
@@ -151,10 +175,29 @@ async function main() {
     onRefresh: async () => {
       await loadKeys(currentPattern);
     },
-    onQuit: cleanup
+    onQuit: cleanup,
+    onToggleTree: () => {
+      keyManager.toggleTreeMode();
+      
+      if (keyManager.isTreeMode()) {
+        // Switch to tree view
+        keyListWidget.widget.hide();
+        treeKeyListWidget.widget.show();
+        treeKeyListWidget.widget.focus();
+        updateKeyList();
+      } else {
+        // Switch to list view
+        treeKeyListWidget.widget.hide();
+        keyListWidget.widget.show();
+        keyListWidget.widget.focus();
+        updateKeyList();
+      }
+      
+      screen.render();
+    }
   });
 
-  // Key-specific handlers (delete, TTL)
+  // Key-specific handlers (delete, TTL) for list view
   keyListWidget.widget.key('d', async () => {
     const selected = (keyListWidget.widget as any).selected;
     const filteredKeys = keyManager.getFilteredKeys();
@@ -193,6 +236,42 @@ async function main() {
     }
   });
 
+  // Key-specific handlers (delete, TTL) for tree view
+  treeKeyListWidget.widget.key('d', async () => {
+    const key = treeKeyListWidget.getSelectedKey();
+    if (!key) return;
+    
+    showDeleteDialog(
+      screen,
+      key,
+      async () => {
+        try {
+          await deleteKey(client as any, key);
+          
+          // Remove key from local cache for instant UI update
+          keyManager.removeKey(key);
+          updateKeyList();
+          updateStatusBar();
+          
+          // Show success message
+          valueDisplay.widget.setContent(`{green-fg}✓ Key deleted successfully:{/green-fg} ${key}`);
+          statusBar.widget.setContent(` Key deleted: ${key}`);
+          
+          treeKeyListWidget.widget.focus();
+          screen.render();
+        } catch (err: any) {
+          valueDisplay.widget.setContent(`{red-fg}✗ Error deleting key:{/red-fg} ${err.message}`);
+          screen.render();
+        }
+      },
+      () => {
+        valueDisplay.widget.setContent('Delete cancelled');
+        treeKeyListWidget.widget.focus();
+        screen.render();
+      }
+    );
+  });
+
   keyListWidget.widget.key('t', async () => {
     const selected = (keyListWidget.widget as any).selected;
     const filteredKeys = keyManager.getFilteredKeys();
@@ -203,6 +282,15 @@ async function main() {
         keyListWidget.widget.focus();
       });
     }
+  });
+
+  treeKeyListWidget.widget.key('t', async () => {
+    const key = treeKeyListWidget.getSelectedKey();
+    if (!key) return;
+    
+    await showTTLDialog(screen, client as any, key, () => {
+      treeKeyListWidget.widget.focus();
+    });
   });
 
   // Focus on key list and render

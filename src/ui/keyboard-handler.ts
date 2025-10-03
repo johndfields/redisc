@@ -6,6 +6,7 @@ export interface KeyboardHandlers {
   onHelp: () => void;
   onRefresh: () => Promise<void>;
   onQuit: () => Promise<void>;
+  onToggleTree: () => void;
 }
 
 /**
@@ -39,5 +40,10 @@ export function setupKeyboardHandlers(
   // Refresh handler
   screen.key('r', async () => {
     await handlers.onRefresh();
+  });
+
+  // Toggle tree view handler
+  screen.key('C-t', () => {
+    handlers.onToggleTree();
   });
 }
