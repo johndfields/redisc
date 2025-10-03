@@ -79,6 +79,13 @@ npm run typecheck
 - `d` - Delete selected key (with confirmation)
 - `t` - Show TTL for selected key
 - `r` - Refresh key list
+- `Ctrl-t` or `^t` - Toggle tree view mode
+
+### Tree View Mode
+- `Enter/Space` - Expand/collapse folder
+- `→` - Expand selected folder
+- `←` - Collapse selected folder
+- `d` - Delete single key OR bulk delete all keys in folder
 
 ### Other
 - `?` - Show help
@@ -100,6 +107,21 @@ Examples:
 - `temp:*:data` - All temporary data keys
 
 ## Features
+
+### Tree View Mode
+- **Hierarchical Display**: Organize keys by their prefixes (`:`, `/`, `.`, `-`)
+- **Auto-detect Delimiter**: Automatically detects the delimiter used in your keys
+- **Expandable Folders**: Navigate through nested key structures like a file system
+- **Bulk Operations**: Delete entire folders (all keys matching a prefix) with one action
+- **Toggle Anytime**: Press `Ctrl-t` to switch between flat list and tree view
+
+### Bulk Delete
+- **Folder Deletion**: In tree view, delete all keys under a folder prefix
+- **Safety Confirmations**: Shows exact pattern and key count before deletion
+- **Warning for Large Deletes**: Red warning displayed when deleting >1000 keys
+- **Batched Processing**: Deletes processed in batches of 500 for reliability
+- **Progress Display**: Real-time progress shown during bulk operations
+- **Boundary Checking**: Prevents partial matches (e.g., `user:123` won't match `user:1234`)
 
 ### Supported Redis Types
 - **String** - Simple string values
@@ -196,6 +218,59 @@ The original JavaScript version is preserved:
 npm run start:old
 ```
 
+## Usage Examples
+
+### Tree View Workflow
+
+1. **Enable tree view**:
+   - Press `Ctrl-t` to switch to tree view
+   - Keys are automatically organized by delimiter (`:`, `/`, `.`, `-`)
+
+2. **Navigate folders**:
+   - Use arrow keys to move between items
+   - Press `Enter` or `Space` to expand/collapse folders
+   - Press `→` to expand, `←` to collapse
+
+3. **View key values**:
+   - Navigate to a key (leaf node, no expand icon)
+   - Press `Enter` to view the key's value
+
+4. **Bulk delete a folder**:
+   - Navigate to a folder node (has `▶` or `▼` icon)
+   - Press `d` to delete ALL keys under that folder
+   - Confirm the deletion (shows pattern like `user:session:*` and key count)
+   - Watch progress as keys are deleted in batches
+
+### Example Key Structures
+
+**E-commerce keys**:
+```
+user:123:profile
+user:123:cart
+user:123:orders
+user:456:profile
+```
+In tree view:
+```
+▼ user
+  ▶ 123 (3 keys)
+  ▶ 456 (1 key)
+```
+
+**Cache keys**:
+```
+cache/api/v1/users
+cache/api/v1/products
+cache/api/v2/users
+```
+In tree view:
+```
+▼ cache
+  ▼ api
+    ▶ v1 (2 keys)
+    ▶ v2 (1 key)
+```
+
 ## Tips & Best Practices
 
 1. **Large Databases**: Use specific patterns instead of `*` to avoid loading too many keys
@@ -203,8 +278,10 @@ npm run start:old
 3. **Search vs Pattern**: 
    - Search (`/`) filters already loaded keys (fast, client-side)
    - Pattern (`p`) reloads from Redis with new pattern (slower, server-side)
-4. **SSH Tunnels**: Keep tunnel configuration in separate .env files for different environments
-5. **Safety**: Always double-check before deleting keys in production
+4. **Tree View**: Best for exploring unfamiliar databases or managing hierarchical key structures
+5. **Bulk Delete**: Always review the pattern and key count carefully before confirming
+6. **SSH Tunnels**: Keep tunnel configuration in separate .env files for different environments
+7. **Safety**: Always double-check before deleting keys in production
 
 ## Support
 
