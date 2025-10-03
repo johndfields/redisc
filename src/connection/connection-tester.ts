@@ -2,6 +2,7 @@ import { createClient } from 'redis';
 import { createTunnel } from 'tunnel-ssh';
 import type { RedisConfig } from '../config/redis-config.js';
 import type { SSHConfig } from '../config/ssh-config.js';
+import { displayConnectionTestBanner, formatConfigLine } from '../utils/banner.js';
 
 /**
  * Test Redis connection with optional SSH tunnel
@@ -16,27 +17,34 @@ export async function testConnection(
   redisConfig: RedisConfig,
   sshConfig: SSHConfig | null
 ): Promise<void> {
-  console.log('\n🔍 Testing connection...\n');
-  console.log('Configuration:');
-  console.log(`  Environment: ${envFile}`);
-  console.log(`  Use SSH: ${sshConfig !== null}`);
+  displayConnectionTestBanner();
+  
+  console.log('\n┌───────────────────────────────────────────────────────────────┐');
+  console.log('│  CONNECTION CONFIGURATION                                     │');
+  console.log('└───────────────────────────────────────────────────────────────┘\n');
+  
+  formatConfigLine('Environment', envFile, '📋');
+  formatConfigLine('SSH Tunnel', sshConfig !== null ? 'Enabled' : 'Disabled', '🔐');
   
   if (sshConfig) {
-    console.log(`  SSH Host: ${sshConfig.host}:${sshConfig.port}`);
-    console.log(`  SSH User: ${sshConfig.username}`);
-    console.log(`  SSH Auth: ${sshConfig.privateKey ? 'Private Key' : 'Password'}`);
-    console.log(`  Redis Target: ${redisConfig.host}:${redisConfig.port}`);
+    formatConfigLine('SSH Host', `${sshConfig.host}:${sshConfig.port}`, '🌐');
+    formatConfigLine('SSH User', sshConfig.username, '👤');
+    formatConfigLine('SSH Auth', sshConfig.privateKey ? 'Private Key' : 'Password', '🔑');
+    formatConfigLine('Redis Target', `${redisConfig.host}:${redisConfig.port}`, '🎯');
   } else {
-    console.log(`  Redis Host: ${redisConfig.host}:${redisConfig.port}`);
+    formatConfigLine('Redis Host', `${redisConfig.host}:${redisConfig.port}`, '🌐');
   }
   
-  console.log(`  Redis DB: ${redisConfig.database}`);
-  console.log('');
+  formatConfigLine('Redis Database', `DB ${redisConfig.database}`, '💾');
+  
+  console.log('\n┌───────────────────────────────────────────────────────────────┐');
+  console.log('│  CONNECTION TEST                                              │');
+  console.log('└───────────────────────────────────────────────────────────────┘\n');
 
   try {
     // Test SSH tunnel if enabled
     if (sshConfig) {
-      console.log('📡 Establishing SSH tunnel...');
+      console.log('  [1/3] 📡 Establishing SSH tunnel...');
       
       const tunnelOptions = { autoClose: true, reconnectOnError: false };
       const serverOptions = { port: 0 };
@@ -74,10 +82,10 @@ export async function testConnection(
         throw new Error('Failed to get server address');
       }
 
-      console.log(`✅ SSH tunnel established on local port ${address.port}`);
+      console.log(`        ✅ SSH tunnel established on local port ${address.port}`);
 
       // Connect to Redis through tunnel
-      console.log('🔌 Connecting to Redis through tunnel...');
+      console.log('\n  [2/3] 🔌 Connecting to Redis through tunnel...');
       const config: any = {
         socket: {
           host: '127.0.0.1',
@@ -97,15 +105,18 @@ export async function testConnection(
       
       // Test Redis connection
       const pong = await client.ping();
-      console.log(`✅ Redis connection successful: ${pong}`);
+      console.log(`        ✅ Redis connection successful (${pong})`);
+      
+      console.log('\n  [3/3] 📊 Gathering database information...');
       
       // Get Redis info
       const info = await client.info('server');
       const version = info.match(/redis_version:([^\r\n]+)/)?.[1];
       const keys = await client.dbSize();
       
-      console.log(`📊 Redis version: ${version}`);
-      console.log(`📊 Total keys in DB ${redisConfig.database}: ${keys}`);
+      console.log(`        ✓ Redis version: ${version}`);
+      console.log(`        ✓ Database: ${redisConfig.database}`);
+      console.log(`        ✓ Total keys: ${keys.toLocaleString()}`);
       
       await client.quit();
       server.close();
@@ -113,7 +124,7 @@ export async function testConnection(
       
     } else {
       // Direct connection
-      console.log('🔌 Connecting to Redis...');
+      console.log('  [1/2] 🔌 Connecting to Redis...');
       const config: any = {
         socket: {
           host: redisConfig.host,
@@ -132,39 +143,58 @@ export async function testConnection(
       await client.connect();
       
       const pong = await client.ping();
-      console.log(`✅ Redis connection successful: ${pong}`);
+      console.log(`        ✅ Redis connection successful (${pong})`);
+      
+      console.log('\n  [2/2] 📊 Gathering database information...');
       
       const info = await client.info('server');
       const version = info.match(/redis_version:([^\r\n]+)/)?.[1];
       const keys = await client.dbSize();
       
-      console.log(`📊 Redis version: ${version}`);
-      console.log(`📊 Total keys in DB ${redisConfig.database}: ${keys}`);
+      console.log(`        ✓ Redis version: ${version}`);
+      console.log(`        ✓ Database: ${redisConfig.database}`);
+      console.log(`        ✓ Total keys: ${keys.toLocaleString()}`);
       
       await client.quit();
     }
     
-    console.log('\n✅ Connection test passed!\n');
+    console.log('\n┌───────────────────────────────────────────────────────────────┐');
+    console.log('│  ✅ CONNECTION TEST PASSED                                    │');
+    console.log('└───────────────────────────────────────────────────────────────┘');
+    console.log('\n  All systems operational. Ready to browse Redis keys! 🚀\n');
     process.exit(0);
     
   } catch (err) {
     const error = err as Error;
-    console.error('\n❌ Connection test failed!');
-    console.error(`Error: ${error.message}\n`);
+    console.log('\n┌───────────────────────────────────────────────────────────────┐');
+    console.log('│  ❌ CONNECTION TEST FAILED                                    │');
+    console.log('└───────────────────────────────────────────────────────────────┘\n');
+    console.error(`  Error: ${error.message}\n`);
+    
+    console.log('┌───────────────────────────────────────────────────────────────┐');
+    console.log('│  TROUBLESHOOTING TIPS                                         │');
+    console.log('└───────────────────────────────────────────────────────────────┘\n');
     
     if (sshConfig) {
-      console.error('Troubleshooting tips:');
-      console.error('  • Verify SSH host and port are correct');
-      console.error('  • Check SSH credentials (username/key/password)');
-      console.error('  • Ensure private key file exists and has correct permissions');
-      console.error('  • Verify Redis host/port on remote server');
-      console.error('  • Check if firewall allows the connection\n');
+      console.log('  🔍 SSH Connection Issues:');
+      console.log('     • Verify SSH host and port are correct');
+      console.log('     • Check SSH credentials (username/key/password)');
+      console.log('     • Ensure private key file exists and has correct permissions (600)');
+      console.log('     • Test manual SSH connection: ssh ' + sshConfig.username + '@' + sshConfig.host);
+      console.log('');
+      console.log('  🔍 Redis Connection Issues:');
+      console.log('     • Verify Redis host/port are accessible from SSH server');
+      console.log('     • Check if Redis is running on the remote server');
+      console.log('     • Verify firewall allows connection from SSH server to Redis');
+      console.log('');
     } else {
-      console.error('Troubleshooting tips:');
-      console.error('  • Verify Redis host and port are correct');
-      console.error('  • Check if Redis is running');
-      console.error('  • Verify Redis password if required');
-      console.error('  • Check firewall settings\n');
+      console.log('  🔍 Common Issues:');
+      console.log('     • Verify Redis host and port are correct');
+      console.log('     • Check if Redis is running: redis-cli ping');
+      console.log('     • Verify Redis password if authentication is required');
+      console.log('     • Check firewall settings allow connection');
+      console.log('     • Ensure Redis is listening on the correct interface');
+      console.log('');
     }
     
     process.exit(1);

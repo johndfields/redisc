@@ -24,6 +24,7 @@ import { showDeleteDialog } from './src/ui/dialogs/delete-dialog.js';
 import { showPatternDialog } from './src/ui/dialogs/pattern-dialog.js';
 import { setupKeyboardHandlers } from './src/ui/keyboard-handler.js';
 import { setupCleanup } from './src/utils/lifecycle.js';
+import { displayBanner } from './src/utils/banner.js';
 
 async function main() {
   // Load configuration
@@ -37,6 +38,9 @@ async function main() {
     return;
   }
 
+  // Display banner before starting UI
+  displayBanner();
+  
   // Initialize UI
   const screen = createScreen(envConfig.envFile);
   const statusBar = createStatusBar(screen);
